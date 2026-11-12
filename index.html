@@ -1,324 +1,60 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>BlueSky Compute Defense - Mini FPS</title>
-<style>
-  body { margin: 0; overflow: hidden; background: #111; font-family: system-ui, sans-serif; }
-  #blocker {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center;
-    z-index: 10; color: white; text-align: center;
-  }
-  #instructions { max-width: 500px; padding: 30px; background: rgba(20,30,50,0.9); border-radius: 12px; border: 1px solid #4488ff; }
-  #instructions h1 { margin: 0 0 10px; color: #66aaff; font-size: 28px; }
-  #instructions p { margin: 8px 0; font-size: 15px; line-height: 1.4; }
-  #crosshair {
-    position: absolute; top: 50%; left: 50%; width: 4px; height: 4px;
-    background: #fff; border-radius: 50%; transform: translate(-50%, -50%);
-    pointer-events: none; z-index: 5; box-shadow: 0 0 4px #000;
-  }
-  #hud {
-    position: absolute; bottom: 20px; left: 20px; color: #fff; font-size: 18px;
-    text-shadow: 1px 1px 2px #000; z-index: 5; pointer-events: none;
-  }
-  #healthbar { width: 200px; height: 16px; background: #333; border: 1px solid #fff; margin-top: 5px; }
-  #healthfill { height: 100%; width: 100%; background: #44ff44; transition: width 0.2s; }
-  canvas { display: block; }
-</style>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#071014">
+  <meta name="description" content="Hold the Wickliffe compute aisle against red intruder bots in a three-minute arcade defense run.">
+  <title>BlueSky Compute Defense</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a161b'/%3E%3Cpath d='M8 45l14-26h10L18 45zm15 0 14-26h10L33 45zm15 0 14-26h8L46 45z' fill='%23c0fa54'/%3E%3C/svg%3E">
+  <link rel="preload" as="font" href="./vendor/display.woff2" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./console.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three.js","pointer-lock":"./vendor/pointer.js"}}</script>
 </head>
-<body>
-<div id="blocker">
-  <div id="instructions">
-    <h1>BlueSky Compute Defense</h1>
-    <p><strong>Wickliffe, KY Concept Site</strong></p>
-    <p>Defend the GB300 racks from intruders!</p>
-    <p><strong>WASD</strong> move &nbsp;|&nbsp; <strong>Mouse</strong> look &nbsp;|&nbsp; <strong>Click</strong> shoot</p>
-    <p><strong>Space</strong> jump &nbsp;|&nbsp; <strong>Esc</strong> unlock mouse</p>
-    <p style="margin-top:20px; color:#aaa;">Click anywhere to start</p>
+<body data-mode="menu">
+  <div id="viewport"></div><div class="shade"></div><div id="damage"></div>
+  <header class="topbar">
+    <div class="brand"><i class="brandmark" aria-hidden="true"><b></b><b></b><b></b></i><span>BlueSky <b>Compute</b></span></div>
+    <div class="top-actions">
+      <span class="best"><small>PERSONAL BEST</small><strong id="best">000000</strong></span>
+      <button id="audio" class="icon-button" aria-label="Mute sound" aria-pressed="false"><span class="sound-icon"><i></i><i></i><i></i><i></i></span></button>
+      <button id="pause" class="icon-button" aria-label="Pause game"><i class="pause-icon" aria-hidden="true"></i></button>
+    </div>
+  </header>
+  <main id="menu">
+    <div class="eyebrow"><span></span><b id="mode-label">ARCADE SURVIVAL</b></div>
+    <h1 id="title"><span>COMPUTE</span><em>DEFENSE</em></h1>
+    <p id="brief">Hold the site for three minutes. Repel intruder bots through the rack aisle and out into the cooling yard.</p>
+    <button id="launch" class="launch" disabled><span class="play-icon" aria-hidden="true"></span><span id="launch-text">Powering up</span><b class="arrow" aria-hidden="true"></b></button>
+    <div id="controls" aria-label="Game controls">
+      <span><kbd>WASD</kbd> Move</span><span><kbd class="mouse-key" aria-label="Mouse"><i></i></kbd> Aim / fire</span><span><kbd>SPACE</kbd> Jump</span>
+    </div>
+  </main>
+  <div id="tag" aria-hidden="true"><div class="target-box"></div><span><i></i> INTRUDER BOT</span></div>
+  <footer id="telemetry"><span class="site-location"><i class="locator"></i> WICKLIFFE, KY <b>/</b> <span id="zone-name">COMPUTE HALL</span></span><span class="feed"><button id="view" aria-pressed="false">View exterior</button><i></i><span id="feed-name">LIVE AISLE FEED</span></span></footer>
+  <section id="hud" aria-label="Game statistics">
+    <div class="runbar"><span>WAVE <b id="wave">01</b></span><strong id="timer">03:00</strong><span>SCORE <b id="score">000000</b></span></div>
+    <div class="health"><span>INTEGRITY <strong id="health-value">100</strong></span><div class="health-track"><i id="health-fill"></i></div></div>
+    <div class="weapon-label">ARC PULSE <b>∞</b></div>
+    <div id="reticle"><i></i></div><div id="hitmark"></div><div id="popup" role="status"></div>
+    <div id="toast" role="status"></div>
+  </section>
+  <div id="touch">
+    <div id="look-pad" aria-label="Drag to look"></div>
+    <div id="stick" aria-label="Movement joystick"><i></i></div>
+    <button id="jump" aria-label="Jump">↑<small>JUMP</small></button>
+    <button id="fire" aria-label="Fire pulse"><span>⊙</span><small>FIRE</small></button>
   </div>
-</div>
-<div id="crosshair"></div>
-<div id="hud">
-  Score: <span id="score">0</span><br>
-  Health:
-  <div id="healthbar"><div id="healthfill"></div></div>
-</div>
-
-<script type="module">
-import * as THREE from 'three';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-
-// --- Setup ---
-const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x111122, 10, 80);
-scene.background = new THREE.Color(0x0a0a15);
-
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(0, 1.6, 0);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-// Lights
-const hemi = new THREE.HemisphereLight(0x8888ff, 0x444422, 0.6);
-scene.add(hemi);
-const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-dir.position.set(5, 10, 5);
-dir.castShadow = true;
-scene.add(dir);
-const ambient = new THREE.AmbientLight(0x404060, 0.4);
-scene.add(ambient);
-
-// Controls
-const controls = new PointerLockControls(camera, document.body);
-scene.add(controls.object);
-controls.minPolarAngle = 0.1;
-controls.maxPolarAngle = Math.PI - 0.1;
-
-const blocker = document.getElementById('blocker');
-const instructions = document.getElementById('instructions');
-blocker.addEventListener('click', () => controls.lock());
-controls.addEventListener('lock', () => { blocker.style.display = 'none'; });
-controls.addEventListener('unlock', () => { blocker.style.display = 'flex'; });
-
-// Movement
-const velocity = new THREE.Vector3();
-const direction = new THREE.Vector3();
-let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-let canJump = false;
-const onKeyDown = (e) => {
-  switch (e.code) {
-    case 'KeyW': moveForward = true; break;
-    case 'KeyA': moveLeft = true; break;
-    case 'KeyS': moveBackward = true; break;
-    case 'KeyD': moveRight = true; break;
-    case 'Space': if (canJump) { velocity.y = 8; canJump = false; } break;
-  }
-};
-const onKeyUp = (e) => {
-  switch (e.code) {
-    case 'KeyW': moveForward = false; break;
-    case 'KeyA': moveLeft = false; break;
-    case 'KeyS': moveBackward = false; break;
-    case 'KeyD': moveRight = false; break;
-  }
-};
-document.addEventListener('keydown', onKeyDown);
-document.addEventListener('keyup', onKeyUp);
-
-// --- World: Data Center Aisle ---
-const floorGeo = new THREE.PlaneGeometry(20, 120);
-const floorMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.9 });
-const floor = new THREE.Mesh(floorGeo, floorMat);
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
-
-// Ceiling
-const ceil = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: 0x222233 }));
-ceil.rotation.x = Math.PI / 2;
-ceil.position.y = 4.5;
-scene.add(ceil);
-
-// Server racks (inspired by concept: blue/green panels)
-function makeRack(x, z, side) {
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(1.2, 2.4, 0.8),
-    new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.6, metalness: 0.3 })
-  );
-  body.position.y = 1.2;
-  body.castShadow = true;
-  group.add(body);
-
-  // Green status lights / panels
-  for (let i = 0; i < 6; i++) {
-    const panel = new THREE.Mesh(
-      new THREE.BoxGeometry(1.0, 0.25, 0.05),
-      new THREE.MeshStandardMaterial({ color: 0x22cc55, emissive: 0x114422, emissiveIntensity: 0.3 })
-    );
-    panel.position.set(0, 0.3 + i * 0.35, side * 0.42);
-    group.add(panel);
-  }
-  // Blue accent
-  const accent = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 2.4, 0.82),
-    new THREE.MeshStandardMaterial({ color: 0x3366aa })
-  );
-  accent.position.x = side * 0.55;
-  group.add(accent);
-
-  group.position.set(x, 0, z);
-  scene.add(group);
-  return group;
-}
-
-const racks = [];
-for (let z = -50; z < 50; z += 2.5) {
-  racks.push(makeRack(-3.5, z, 1));
-  racks.push(makeRack(3.5, z, -1));
-}
-
-// End walls
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x222233 });
-const wall1 = new THREE.Mesh(new THREE.BoxGeometry(20, 4.5, 1), wallMat);
-wall1.position.set(0, 2.25, -55);
-scene.add(wall1);
-const wall2 = wall1.clone();
-wall2.position.z = 55;
-scene.add(wall2);
-
-// --- Enemies (intruders) ---
-const enemies = [];
-const enemyGeo = new THREE.BoxGeometry(0.6, 1.8, 0.4);
-const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x440000 });
-
-function spawnEnemy(z) {
-  const enemy = new THREE.Mesh(enemyGeo, enemyMat.clone());
-  enemy.position.set((Math.random() - 0.5) * 4, 0.9, z);
-  enemy.castShadow = true;
-  enemy.userData = { health: 3, speed: 1.2 + Math.random() * 0.8, lastShot: 0 };
-  scene.add(enemy);
-  enemies.push(enemy);
-}
-
-for (let i = 0; i < 8; i++) {
-  spawnEnemy(-20 + Math.random() * 40);
-}
-
-// --- Shooting ---
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2(0, 0);
-let score = 0;
-let health = 100;
-const scoreEl = document.getElementById('score');
-const healthFill = document.getElementById('healthfill');
-
-function updateHUD() {
-  scoreEl.textContent = score;
-  healthFill.style.width = Math.max(0, health) + '%';
-  healthFill.style.background = health > 50 ? '#44ff44' : health > 25 ? '#ffaa00' : '#ff4444';
-}
-
-document.addEventListener('mousedown', (e) => {
-  if (!controls.isLocked || e.button !== 0) return;
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(enemies);
-  if (hits.length > 0) {
-    const enemy = hits[0].object;
-    enemy.userData.health -= 1;
-    // Flash hit
-    enemy.material.emissive.setHex(0xff0000);
-    setTimeout(() => enemy.material.emissive.setHex(0x440000), 80);
-    if (enemy.userData.health <= 0) {
-      scene.remove(enemy);
-      enemies.splice(enemies.indexOf(enemy), 1);
-      score += 10;
-      updateHUD();
-      // Respawn later
-      setTimeout(() => spawnEnemy(-40 + Math.random() * 80), 3000);
-    }
-  }
-  // Muzzle flash simple
-  const flash = new THREE.PointLight(0xffaa44, 2, 8);
-  flash.position.copy(camera.position);
-  flash.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(1));
-  scene.add(flash);
-  setTimeout(() => scene.remove(flash), 50);
-});
-
-// --- Enemy AI ---
-function updateEnemies(delta) {
-  const playerPos = controls.object.position;
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    const e = enemies[i];
-    const dir = new THREE.Vector3().subVectors(playerPos, e.position);
-    dir.y = 0;
-    const dist = dir.length();
-    if (dist > 0.5) {
-      dir.normalize();
-      e.position.addScaledVector(dir, e.userData.speed * delta);
-      e.lookAt(playerPos.x, e.position.y, playerPos.z);
-    }
-    // Shoot at player if close and visible
-    if (dist < 18 && performance.now() - e.userData.lastShot > 1500) {
-      e.userData.lastShot = performance.now();
-      // Simple damage if roughly facing
-      if (dist < 12) {
-        health -= 8;
-        updateHUD();
-        if (health <= 0) {
-          health = 0;
-          alert('You were overrun! Score: ' + score + '\\nClick to restart.');
-          location.reload();
-        }
-      }
-    }
-  }
-}
-
-// --- Animation loop ---
-let prevTime = performance.now();
-function animate() {
-  requestAnimationFrame(animate);
-  const time = performance.now();
-  const delta = Math.min((time - prevTime) / 1000, 0.1);
-  prevTime = time;
-
-  if (controls.isLocked) {
-    velocity.x -= velocity.x * 10.0 * delta;
-    velocity.z -= velocity.z * 10.0 * delta;
-    velocity.y -= 20 * delta; // gravity
-
-    direction.z = Number(moveForward) - Number(moveBackward);
-    direction.x = Number(moveRight) - Number(moveLeft);
-    direction.normalize();
-
-    if (moveForward || moveBackward) velocity.z -= direction.z * 40.0 * delta;
-    if (moveLeft || moveRight) velocity.x -= direction.x * 40.0 * delta;
-
-    controls.moveRight(-velocity.x * delta);
-    controls.moveForward(-velocity.z * delta);
-    controls.object.position.y += velocity.y * delta;
-
-    // Ground collision
-    if (controls.object.position.y < 1.6) {
-      velocity.y = 0;
-      controls.object.position.y = 1.6;
-      canJump = true;
-    }
-
-    // Bounds
-    const p = controls.object.position;
-    p.x = Math.max(-2.5, Math.min(2.5, p.x));
-    p.z = Math.max(-50, Math.min(50, p.z));
-
-    updateEnemies(delta);
-  }
-
-  renderer.render(scene, camera);
-}
-animate();
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-updateHUD();
-</script>
+  <noscript>This game requires JavaScript.</noscript>
+  <script type="module">
+    const fail = () => {
+      document.querySelector('#brief').textContent = 'The 3D scene could not start. Enable graphics acceleration, then reload the game.';
+      const button = document.querySelector('#launch');
+      button.disabled = false;
+      document.querySelector('#launch-text').textContent = 'Reload game';
+      button.onclick = () => location.reload();
+    };
+    import('./game.js').catch(error => { console.error(error); fail(); });
+  </script>
 </body>
 </html>
